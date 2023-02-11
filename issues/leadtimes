@@ -5,6 +5,7 @@ from datetime import datetime
 
 import numpy as np
 import process
+from dateutil.parser import parse
 
 
 def human_readable_time(seconds):
@@ -17,21 +18,23 @@ def human_readable_time(seconds):
 parser = argparse.ArgumentParser(description="test")
 parser.add_argument('-f', '--filename', required=True,
                     help="filename to load issues from")
+parser.add_argument('--closed-after',
+                    help="Limit issues to those closed after the given date. Format: YYYY-MM-DD[Thh:mm:ss]")
 args = parser.parse_args()
 
 issues = process.load_issues(args.filename)
-after_date = datetime(2022, 10, 1)
+closed_after = parse(args.closed_after)
 
 lead_times = [
     process.calculate_lead_time(issue)
     for issue in issues
-    if process.get_close_time(issue) >= after_date
+    if closed_after is None or process.get_close_time(issue) >= closed_after
 ]
 lead_times = [lead_time for lead_time in lead_times if lead_time is not None]
 percentiles = [50, 75, 90, 95, 99]
 percentile_values = np.percentile(lead_times, percentiles)
 print(
-    f"lead time stats from {len(lead_times)} issues closed after {after_date}\n")
+    f"lead time stats from {len(lead_times)} issues closed after {args.closed_after}\n")
 
 for i, percentile in enumerate(percentiles):
     print(
