@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import argparse
+from datetime import datetime
+
+import numpy as np
+import process
+
+
+def human_readable_time(seconds):
+    minutes = int(seconds / 60) % 60
+    hours = int(seconds / 3600) % 24
+    days = int(seconds / 86400)
+    return f'{days}d {hours}h {minutes}m {seconds%60:.0f}s'
+
+
+parser = argparse.ArgumentParser(description="test")
+parser.add_argument('-f', '--filename', required=True,
+                    help="filename to load issues from")
+args = parser.parse_args()
+
+issues = process.load_issues(args.filename)
+after_date = datetime(2022, 10, 1)
+
+lead_times = [
+    process.calculate_lead_time(issue)
+    for issue in issues
+    if process.get_close_time(issue) >= after_date
+]
+lead_times = [lead_time for lead_time in lead_times if lead_time is not None]
+percentiles = [50, 75, 90, 95, 99]
+percentile_values = np.percentile(lead_times, percentiles)
+print(
+    f"lead time stats from {len(lead_times)} issues closed after {after_date}\n")
+
+for i, percentile in enumerate(percentiles):
+    print(
+        f"{percentile}th percentile: {human_readable_time(percentile_values[i])}")
