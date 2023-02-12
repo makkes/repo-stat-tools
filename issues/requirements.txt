@@ -1,0 +1,2 @@
+dateparser==1.1.7
+numpy==1.24.1
