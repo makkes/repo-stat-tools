@@ -3,6 +3,7 @@
 import argparse
 import sys
 from datetime import datetime
+from functools import reduce
 
 import numpy as np
 import process
@@ -23,10 +24,19 @@ parser.add_argument('--closed-after',
                     help="Limit issues to those closed after the given date. Format: YYYY-MM-DD[Thh:mm:ss]")
 parser.add_argument('-l', '--labels',
                     help="Select issues by the given labels. Format: label1,label2,...")
+parser.add_argument('--use-start-time-fallback',
+                    action='store_true',
+                    help='''Usually start time is measured as the time when the issue entered the
+                        "In Progress" pipeline in Zenhub. Use this flag if you want the issue's
+                        creation time to be used as a fallback in case it never entered that pipeline.
+                        Without this flag such issues are dropped from the calculation.''')
 args = parser.parse_args()
 
 labels = args.labels.split(",") if args.labels is not None else None
 closed_after = parse(args.closed_after) if args.closed_after else None
+start_time_sources = [process.StartTimeSource.IN_PROGRESS]
+if args.use_start_time_fallback:
+    start_time_sources.append(process.StartTimeSource.CREATED_AT)
 
 issues = process.load_issues(args.filename)
 
@@ -36,16 +46,21 @@ lead_times = [
     if (closed_after is None or process.get_close_time(issue) >= closed_after)
     and (labels is None or process.has_labels(issue, labels))
 ]
+lead_times = list(filter(lambda i: i[1] in start_time_sources, lead_times))
 
 if not lead_times:
     print(f"query returned no issues")
     sys.exit(0)
 
-lead_times = [lead_time for lead_time in lead_times if lead_time is not None]
+if args.use_start_time_fallback:
+    fallbacks = reduce(lambda acc, cur: acc + 1 if cur[1] == process.StartTimeSource.IN_PROGRESS else acc, lead_times, 0)
+    print(f'!! used fallback start time for {fallbacks} issues !!')
+
+lead_times = [lead_time[0] for lead_time in lead_times if lead_time is not None]
 percentiles = [50, 75, 90, 95, 99]
 percentile_values = np.percentile(lead_times, percentiles)
-print(
-    f"lead time stats from {len(lead_times)} issues\n")
+
+print(f"lead time stats from {len(lead_times)} issues\n")
 
 for i, percentile in enumerate(percentiles):
     print(
