@@ -21,12 +21,6 @@ def calculate_lead_time(issue):
     return (close_time - start_time).total_seconds()
 
 
-def label_filter(issue):
-    if len(sys.argv) >= 2:
-        return all(label in map(lambda label: label["name"], issue["labels"]) for label in sys.argv[1:])
-    return True
-
-
 def get_start_time(issue):
     for event in issue["zenhub"]:
         if event["type"] == "transferIssue" and event["to_pipeline"]["name"] == "In Progress":
@@ -35,3 +29,7 @@ def get_start_time(issue):
 
 def get_close_time(issue):
     return datetime.strptime(issue["github"]["closed_at"], "%Y-%m-%dT%H:%M:%SZ")
+
+
+def has_labels(issue, labels):
+    return all(label in map(lambda l: l["name"], issue["github"]["labels"]) for label in labels)
