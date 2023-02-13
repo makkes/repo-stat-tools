@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import json
 import os
 import sys
 from datetime import datetime
@@ -16,9 +17,9 @@ def check_required_arg(parser, arg):
 
 
 parser = argparse.ArgumentParser(description="test")
-parser.add_argument('-r', '--repository',
-                    help="repository to fetch issues for (format: org/repo)",
-                    default=os.getenv("REPOSITORY"))
+parser.add_argument('-r', '--repositories',
+                    help="repositories to fetch issues for (format: org1/repo1[,org2/repo2]...)",
+                    default=os.getenv("REPOSITORIES"))
 parser.add_argument('--github-token',
                     help="GitHub token used to fetch issues from API",
                     default=os.getenv("GITHUB_TOKEN"))
@@ -31,8 +32,13 @@ parser.add_argument('-o', '--output',
 args = parser.parse_args()
 
 
-check_required_arg(parser, args.repository)
+check_required_arg(parser, args.repositories)
 check_required_arg(parser, args.github_token)
 check_required_arg(parser, args.zenhub_token)
-fetch.fetch_issues(args.repository, "closed",
-                   args.github_token, args.zenhub_token)
+
+issues = []
+for repo in args.repositories.split(","):
+    issues.extend(fetch.fetch_issues(repo, "closed", args.github_token, args.zenhub_token))
+
+f = open(args.output, "w") if args.output else sys.__stdout__
+json.dump(issues, f)

@@ -36,7 +36,7 @@ def get_repo_id(repo, gh_token):
         headers={"Authorization": f"Token {gh_token}"}
     )
     if response.status_code != 200:
-        raise Exception("Failed to fetch repo details")
+        raise Exception(f"Failed to fetch repo details for {repo}: {response.status_code}")
     data = response.json()
     if not data:
         raise Exception("No data in response")
@@ -44,12 +44,10 @@ def get_repo_id(repo, gh_token):
 
 
 def fetch_issues(repo, state, gh_token, zh_token):
-    filename = f"{repo.replace('/', '_')}_{state}_issues.json"
     issues = []
     page = 1
     repo_id = get_repo_id(repo, gh_token)
 
-    # while page == 1:
     while True:
         response = requests.get(
             f"https://api.github.com/repos/{repo}/issues?state={state}&page={page}",
@@ -68,6 +66,4 @@ def fetch_issues(repo, state, gh_token, zh_token):
             if len(issues) % 20 == 0:
                 print(f"processed {len(issues)} issues")
         page += 1
-
-    with open(filename, "w") as f:
-        json.dump(issues, f)
+    return issues
